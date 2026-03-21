@@ -196,14 +196,22 @@ const AdminDashboard = () => {
               <h3>Assign Technician</h3>
               <p>Select a technician for {selectedBooking.service_type} service.</p>
               <div className="tech-list">
-                {technicians
-                  .filter(t => t.service_type.includes(selectedBooking.service_type))
-                  .map(tech => (
-                  <div key={tech._id} className="tech-item" onClick={() => handleAssign(selectedBooking._id, tech._id)}>
-                    <strong>{tech.name}</strong>
-                    <span>{tech.rating}⭐</span>
-                  </div>
-                ))}
+                {technicians.map(tech => {
+                  const isMatch = tech.service_type.some(st => 
+                    selectedBooking.service_type.toLowerCase().includes(st.toLowerCase()) || 
+                    st.toLowerCase().includes(selectedBooking.service_type.toLowerCase())
+                  );
+                  
+                  return (
+                    <div key={tech._id} className="tech-item" onClick={() => handleAssign(selectedBooking._id, tech._id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <strong>{tech.name}</strong>
+                        {isMatch && <span style={{fontSize:'0.7rem', backgroundColor:'#dcfce7', color:'#166534', padding:'0.1rem 0.4rem', borderRadius:'0.25rem', fontWeight:'bold'}}>Match</span>}
+                      </div>
+                      <span>{tech.rating}⭐</span>
+                    </div>
+                  );
+                })}
               </div>
               <button className="btn btn-outline" onClick={() => setSelectedBooking(null)}>Cancel</button>
             </div>
