@@ -82,6 +82,12 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const booking = await Booking.create(bookingData);
 
+    // Send Automated WhatsApp Confirmation
+    const customer = await Customer.findById(customerId);
+    if (customer && customer.phone) {
+      await sendWhatsAppConfirmation(customer.phone, booking._id);
+    }
+
     res.status(201).json({
       success: true,
       data: booking,
