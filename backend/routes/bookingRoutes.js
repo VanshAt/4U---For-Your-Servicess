@@ -131,4 +131,42 @@ router.put('/:id/status', async (req, res) => {
   }
 });
 
+// Rate a completed booking
+router.post('/:id/rate', authMiddleware, async (req, res) => {
+  try {
+    const { rating } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.customer.toString() !== req.user.id) return res.status(401).json({ message: 'Not authorized' });
+    if (booking.status !== 'Completed') return res.status(400).json({ message: 'Can only rate completed bookings' });
+    if (booking.rating) return res.status(400).json({ message: 'Already rated' });
+
+    booking.rating = rating;
+    await booking.save();
+
+    // Update technician's average rating
+    if (booking.technician) {
+      const technician = await Technician.findById(booking.technician);
+      if (technician) {
+        const currentTotal = technician.total_jobs || 0;
+        const currentRating = technician.rating || 0;
+        
+        // Calculate new average
+        const newTotal = currentTotal + 1;
+        const newRating = ((currentRating * currentTotal) + rating) / newTotal;
+        
+        technician.total_jobs = newTotal;
+        technician.rating = parseFloat(newRating.toFixed(1));
+        await technician.save();
+      }
+    }
+
+    res.json({ success: true, message: 'Rating submitted successfully' });
+  } catch (error) {
+    console.error('Rating Error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 module.exports = router;

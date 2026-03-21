@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Calendar, Clock, User as UserIcon } from 'lucide-react';
+import { MapPin, Calendar, Clock, User as UserIcon, Star } from 'lucide-react';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -10,6 +10,60 @@ const MyBookings = () => {
   const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submittingRating, setSubmittingRating] = useState(null);
+
+  const handleRate = async (bookingId, ratingValue) => {
+    setSubmittingRating(bookingId);
+    try {
+      await axios.post(`${API_URL}/api/bookings/${bookingId}/rate`, { rating: ratingValue }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setBookings(prev => prev.map(b => b._id === bookingId ? { ...b, rating: ratingValue } : b));
+    } catch(err) {
+      alert("Failed to submit rating");
+    } finally {
+      setSubmittingRating(null);
+    }
+  };
+
+  const StarRating = ({ booking }) => {
+    const [hover, setHover] = useState(0);
+    
+    if (booking.rating) {
+      return (
+        <div style={{ display: 'flex', gap: '0.2rem', marginTop: '0.75rem', alignItems: 'center' }}>
+          {[1,2,3,4,5].map(star => (
+            <Star key={star} size={16} fill={star <= booking.rating ? "#f59e0b" : "none"} color={star <= booking.rating ? "#f59e0b" : "#cbd5e1"} />
+          ))}
+          <span style={{ fontSize: '0.85rem', color: '#64748b', marginLeft: '0.5rem' }}>You rated {booking.rating} stars</span>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ marginTop: '0.75rem' }}>
+        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Rate this service:</p>
+        <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+          {[1,2,3,4,5].map(star => (
+            <button 
+              key={star}
+              type="button"
+              disabled={submittingRating === booking._id}
+              onMouseEnter={() => setHover(star)}
+              onMouseLeave={() => setHover(0)}
+              onClick={() => handleRate(booking._id, star)}
+              style={{ background: 'none', border: 'none', cursor: submittingRating === booking._id ? 'not-allowed' : 'pointer', padding: 0, transition: 'transform 0.1s' }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.9)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <Star size={24} fill={star <= (hover || 0) ? "#f59e0b" : "none"} color={star <= (hover || 0) ? "#f59e0b" : "#cbd5e1"} style={{ transition: 'all 0.2s' }} />
+            </button>
+          ))}
+          {submittingRating === booking._id && <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '0.5rem' }}>Saving...</span>}
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     const fetchMyBookings = async () => {
@@ -67,7 +121,9 @@ const MyBookings = () => {
                     <div style={{ backgroundColor: '#e2e8f0', padding: '0.6rem', borderRadius: '50%' }}><UserIcon size={20} color="#475569" /></div>
                     <div>
                       <p style={{ margin: '0 0 0.2rem 0', fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>Assigned Technician</p>
-                      <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#0f172a' }}>{booking.technician.name} • ⭐{booking.technician.rating || '4.5'}</p>
+                      <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#0f172a' }}>{booking.technician.name} • ⭐{booking.technician.rating || 'New'}</p>
+                      
+                      {booking.status === 'Completed' && <StarRating booking={booking} />}
                     </div>
                   </div>
                 )}
