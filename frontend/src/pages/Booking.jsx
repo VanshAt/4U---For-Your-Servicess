@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle2, FileText, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, FileText, ArrowLeft, MapPin, Loader2 } from 'lucide-react';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,6 +24,7 @@ const Booking = () => {
   const [bookingData, setBookingData] = useState(null); 
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   useEffect(() => {
     // Add Lottie Player script globally if not present
@@ -62,6 +63,44 @@ const Booking = () => {
   };
 
   const { user } = useAuth();
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    
+    setIsLocating(true);
+    setErrorMsg('');
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+        if (!res.ok) throw new Error('Geocoding failed');
+        const data = await res.json();
+        
+        if (data && data.display_name) {
+          const pincode = data.address?.postcode || '';
+          setFormData(prev => ({ ...prev, address: data.display_name, pincode }));
+        } else {
+          setErrorMsg('Could not fetch address details for this location.');
+        }
+      } catch (err) {
+        console.error("Location Error:", err);
+        setErrorMsg('Error fetching location details from maps.');
+      } finally {
+        setIsLocating(false);
+      }
+    }, (error) => {
+      console.error(error);
+      if (error.code === 1) {
+        setErrorMsg('Please allow location access in your browser to use this feature.');
+      } else {
+        setErrorMsg('Unable to retrieve your location. Try entering manually.');
+      }
+      setIsLocating(false);
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -212,6 +251,17 @@ const Booking = () => {
           
           {/* No name/phone fields here anymore - using user account info */}
 
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-0.75rem', zIndex: 10 }}>
+            <button 
+              type="button" 
+              onClick={handleGetLocation} 
+              disabled={isLocating}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#f1f5f9', color: '#2563eb', border: '1px solid #bfdbfe', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}
+            >
+              {isLocating ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />}
+              {isLocating ? 'Detecting...' : 'Use Current Location'}
+            </button>
+          </div>
           
           <textarea name="address" placeholder="Complete address" rows="3" required style={{...inputStyle, resize: 'none'}} value={formData.address} onChange={handleChange}></textarea>
           
