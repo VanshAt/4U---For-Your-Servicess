@@ -47,56 +47,49 @@ const sendWhatsAppConfirmation = async (phone, bookingId) => {
   }
 };
 
+const authMiddleware = require('../middleware/authMiddleware');
+const Service = require('../models/Service');
+
 // Create a new booking
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { name, phone, address, serviceType, timeSlot, problemDescription } = req.body;
+    const { serviceType, address, timeSlot, problemDescription } = req.body;
+    const customerId = req.user.id; // From authMiddleware
 
-    // 1. Find or create customer
-    let customer = await Customer.findOne({ phone });
-    if (!customer) {
-      customer = await Customer.create({ name, phone, address });
-    }
+    // 1. Get service title from ID
+    const serviceDoc = await Service.findById(serviceType);
+    const serviceReadable = serviceDoc ? serviceDoc.title : 'General Service';
 
-    // 2. Simple assignment logic (find first available tech for this service)
-    // In a real app, this would use geospatial `$near` queries.
+    // 2. Simple assignment logic
     const technician = await Technician.findOne({ 
-      service_type: serviceType, 
+      service_type: serviceReadable, // Match by title now for flexibility
       availability: true 
     });
 
     // 3. Create Booking
     const bookingData = {
-      customer: customer._id,
-      service_type: serviceType,
+      customer: customerId,
+      service_type: serviceReadable,
       address,
       time_slot: timeSlot,
       problem_description: problemDescription,
       status: technician ? 'Assigned' : 'Pending'
     };
     
-    // Only set technician if one was found to avoid Mongoose CastErrors with null/undefined for ObjectId
     if (technician) {
       bookingData.technician = technician._id;
     }
 
     const booking = await Booking.create(bookingData);
 
-    // 4. Send WhatsApp Confirmation
-    let twilioSent = false;
-    if (phone) {
-      twilioSent = await sendWhatsAppConfirmation(phone, booking._id);
-    }
-
     res.status(201).json({
       success: true,
       data: booking,
-      twilioSent,
       message: technician ? 'Technician assigned successfully' : 'Booking created, waiting for technician'
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Booking Creation Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 });
 
@@ -107,6 +100,24 @@ router.get('/', async (req, res) => {
     res.status(200).json({ success: true, data: bookings });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error' });
+  }
+});
+
+// Update booking status
+router.put('/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    ).populate('customer').populate('technician');
+    
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    
+    res.json(booking);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 

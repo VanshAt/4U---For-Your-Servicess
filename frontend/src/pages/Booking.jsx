@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CheckCircle2, FileText, ArrowLeft } from 'lucide-react';
+import LiveTrackingMap from '../components/LiveTrackingMap';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Booking = () => {
   const navigate = useNavigate();
@@ -11,8 +14,6 @@ const Booking = () => {
 
   const [services, setServices] = useState([]);
   const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
     address: '',
     pincode: '',
     service_id: ''
@@ -34,7 +35,7 @@ const Booking = () => {
 
     const fetchServices = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/services');
+        const res = await fetch(`${API_URL}/api/services`);
         const data = await res.json();
         setServices(data);
         
@@ -59,6 +60,8 @@ const Booking = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const { user } = useAuth();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -66,17 +69,18 @@ const Booking = () => {
     
     try {
       const payload = {
-        name: formData.name,
-        phone: formData.phone,
         address: `${formData.address}, Pincode: ${formData.pincode}`,
         serviceType: formData.service_id, 
         timeSlot: 'ASAP',
         problemDescription: ''
       };
 
-      const res = await fetch('http://localhost:5000/api/bookings', {
+      const res = await fetch(`${API_URL}/api/bookings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: JSON.stringify(payload)
       });
       
@@ -84,17 +88,18 @@ const Booking = () => {
       if (res.ok && data.success) {
         const s = services.find(x => x._id === formData.service_id);
         setBookingData({
-          id: data.booking ? data.booking._id : Math.floor(Math.random() * 100000),
-          name: formData.name,
-          phone: formData.phone,
+          id: data.data._id,
+          name: user.name,
+          phone: user.phone || 'N/A',
           service: s ? s.title : 'Selected Service',
-          address: formData.address, // only show address on success screen, hide pincode
+          address: formData.address,
         });
         setBookingSuccess(true);
       } else {
-        setErrorMsg('Error: ' + (data.error || 'Failed to book'));
+        setErrorMsg('Error: ' + (data.message || data.error || 'Failed to book'));
       }
     } catch (error) {
+      console.error('Submission Error:', error);
       setErrorMsg('Network Error: Could not reach server');
     } finally {
       setIsSubmitting(false);
@@ -171,61 +176,14 @@ const Booking = () => {
             </div>
           </div>
 
-          {/* Blinkit-Style Live Tracker Section */}
+          {/* Real Live Tracking Map Section */}
           <div style={{ padding: '2rem', backgroundColor: '#f8fafc' }}>
             <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1rem', fontWeight: '600', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <CheckCircle2 size={18} className="text-emerald-500" /> Live Tracking Status
+              <CheckCircle2 size={18} className="text-emerald-500" /> Real-Time Service Tracking
             </h3>
             
-            <div style={{ position: 'relative', width: '100%', maxWidth: '36rem', margin: '0 auto' }}>
-              {/* Progress Line Background */}
-              <div style={{ position: 'absolute', top: '24px', left: '10%', right: '10%', height: '4px', backgroundColor: '#e2e8f0', borderRadius: '2px', zIndex: 0 }}></div>
-              
-              {/* Progress Line Animated Fill */}
-              <div style={{ position: 'absolute', top: '24px', left: '10%', width: '30%', height: '4px', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: '2px', zIndex: 1, transition: 'width 1s ease-in-out', boxShadow: '0 0 10px rgba(16, 185, 129, 0.3)' }}></div>
-
-              {/* Tracker Steps */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', zIndex: 2 }}>
-                
-                {/* Step 1: Placed */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '60px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#ffffff', border: '2px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)' }}>
-                    <FileText size={20} color="#10b981" />
-                  </div>
-                  <div style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: '600', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Order<br/>Received</div>
-                  <div style={{ fontSize: '0.65rem', color: '#64748b' }}>Done</div>
-                </div>
-
-                {/* Step 2: Assigned (Active Pulse) */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '60px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#ffffff', border: '2px solid #2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', boxShadow: '0 4px 6px rgba(37, 99, 235, 0.2)' }}>
-                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid #2563eb', animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite', opacity: 0.3 }}></div>
-                    <CheckCircle2 size={24} color="#2563eb" />
-                  </div>
-                  <div style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: '700', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pro<br/>Assigned</div>
-                  <div style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: '600' }}>In Progress</div>
-                </div>
-
-                {/* Step 3: On The Way */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '60px', opacity: 0.6 }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#ffffff', border: '2px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 18H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.09a2 2 0 0 1 1.51.69l3.58 4.62"></path><circle cx="20" cy="18" r="2"></circle><circle cx="9" cy="18" r="2"></circle><path d="M15 18h3"></path><path d="M11 18h2"></path><path d="M22 10v6a2 2 0 0 1-2 2h-1.5"></path><path d="M22 10l-4.5 0"></path><path d="M13 10l6 0"></path></svg>
-                  </div>
-                  <div style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: '500', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>On The<br/>Way</div>
-                </div>
-
-                {/* Step 4: Arrived */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '60px', opacity: 0.6 }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#ffffff', border: '2px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                  </div>
-                  <div style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: '500', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pro<br/>Arrived</div>
-                </div>
-
-              </div>
-            </div>
+            <LiveTrackingMap bookingId={bookingData.id} />
             
-            {/* Embedded Action Bar */}
             <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
               <button onClick={() => navigate('/')} style={{ flex: 1, backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1', padding: '0.75rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                 <ArrowLeft size={18} /> Home Dashboard
@@ -251,14 +209,8 @@ const Booking = () => {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem' }}>
-            <div style={{ flex: '1 1 200px' }}>
-              <input name="name" placeholder="Full name" required style={inputStyle} value={formData.name} onChange={handleChange} />
-            </div>
-            <div style={{ flex: '1 1 200px' }}>
-              <input name="phone" placeholder="Phone number" required style={inputStyle} value={formData.phone} onChange={handleChange} />
-            </div>
-          </div>
+          {/* No name/phone fields here anymore - using user account info */}
+
           
           <textarea name="address" placeholder="Complete address" rows="3" required style={{...inputStyle, resize: 'none'}} value={formData.address} onChange={handleChange}></textarea>
           

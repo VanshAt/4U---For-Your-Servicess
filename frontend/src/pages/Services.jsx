@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Fan, Droplets, Zap, Settings, ThermometerSnowflake, Waves, ChevronRight, CheckCircle2 } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const iconMap = {
   Fan: <Fan size={32} className="service-card-icon" />,
   Droplets: <Droplets size={32} className="service-card-icon" />,
@@ -53,7 +55,7 @@ const Services = () => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/services');
+        const response = await fetch(`${API_URL}/api/services`);
         if (!response.ok) {
           throw new Error('Failed to fetch services');
         }
