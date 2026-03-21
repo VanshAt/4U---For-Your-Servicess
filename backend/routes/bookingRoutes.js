@@ -175,4 +175,23 @@ router.post('/:id/rate', authMiddleware, async (req, res) => {
   }
 });
 
+// Cancel a booking
+router.put('/:id/cancel', authMiddleware, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.customer.toString() !== req.user.id) return res.status(401).json({ message: 'Not authorized' });
+    if (booking.status === 'Completed' || booking.status === 'In Progress') {
+      return res.status(400).json({ message: 'Cannot cancel a service that is already in progress or completed.' });
+    }
+
+    booking.status = 'Cancelled';
+    await booking.save();
+    
+    res.json({ success: true, message: 'Booking cancelled successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 module.exports = router;

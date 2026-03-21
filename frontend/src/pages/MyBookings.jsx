@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Calendar, Clock, User as UserIcon, Star } from 'lucide-react';
+import { MapPin, Calendar, Clock, User as UserIcon, Star, XCircle } from 'lucide-react';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -11,6 +11,22 @@ const MyBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submittingRating, setSubmittingRating] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
+
+  const handleCancel = async (bookingId) => {
+    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+    setCancellingId(bookingId);
+    try {
+      await axios.put(`${API_URL}/api/bookings/${bookingId}/cancel`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setBookings(prev => prev.map(b => b._id === bookingId ? { ...b, status: 'Cancelled' } : b));
+    } catch(err) {
+      alert(err.response?.data?.message || "Failed to cancel booking");
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   const handleRate = async (bookingId, ratingValue) => {
     setSubmittingRating(bookingId);
@@ -110,7 +126,7 @@ const MyBookings = () => {
                       <MapPin size={16} /> <span style={{ maxWidth: '400px' }}>{booking.address}</span>
                     </p>
                   </div>
-                  <div style={{ backgroundColor: booking.status === 'Completed' ? '#dcfce7' : booking.status === 'In Progress' ? '#e0f2fe' : '#f1f5f9', color: booking.status === 'Completed' ? '#166534' : booking.status === 'In Progress' ? '#0369a1' : '#475569', padding: '0.35rem 1rem', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem', border: `1px solid ${booking.status === 'Completed' ? '#bbf7d0' : booking.status === 'In Progress' ? '#bae6fd' : '#e2e8f0'}` }}>
+                  <div style={{ backgroundColor: booking.status === 'Completed' ? '#dcfce7' : booking.status === 'In Progress' ? '#e0f2fe' : booking.status === 'Cancelled' ? '#fee2e2' : '#f1f5f9', color: booking.status === 'Completed' ? '#166534' : booking.status === 'In Progress' ? '#0369a1' : booking.status === 'Cancelled' ? '#991b1b' : '#475569', padding: '0.35rem 1rem', borderRadius: '2rem', fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem', border: `1px solid ${booking.status === 'Completed' ? '#bbf7d0' : booking.status === 'In Progress' ? '#bae6fd' : booking.status === 'Cancelled' ? '#fecaca' : '#e2e8f0'}` }}>
                     {booking.status === 'In Progress' && <span style={{ width: '6px', height: '6px', backgroundColor: '#0284c7', borderRadius: '50%', animation: 'pulse 2s infinite' }}></span>}
                     {booking.status}
                   </div>
@@ -141,6 +157,21 @@ const MyBookings = () => {
                           : [19.0760, 72.8777] // Default fallback map view if no explicit coordinates
                       } 
                     />
+                  </div>
+                )}
+
+                {(booking.status === 'Pending' || booking.status === 'Assigned') && (
+                  <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', borderTop: booking.status === 'Pending' ? '1px dashed #cbd5e1' : 'none', paddingTop: booking.status === 'Pending' ? '1.5rem' : '0' }}>
+                    <button 
+                      onClick={() => handleCancel(booking._id)}
+                      disabled={cancellingId === booking._id}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: '600', cursor: cancellingId === booking._id ? 'not-allowed' : 'pointer', transition: 'all 0.2s', fontSize: '0.9rem' }}
+                      onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+                      onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      <XCircle size={16} />
+                      {cancellingId === booking._id ? 'Cancelling...' : 'Cancel Booking'}
+                    </button>
                   </div>
                 )}
               </div>
