@@ -128,12 +128,19 @@ const MyBookings = () => {
                   </div>
                 )}
 
-                {booking.status === 'In Progress' && (
+                {(booking.status === 'In Progress' || booking.status === 'Assigned') && (
                   <div style={{ marginTop: '2rem', borderTop: '1px dashed #cbd5e1', paddingTop: '1.5rem' }}>
                     <h4 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Clock size={18} color="#0ea5e9" /> Live Tracking Available
+                      <MapPin size={18} color="#0ea5e9" /> {booking.status === 'In Progress' ? 'Live Tracking Available' : 'Technician Location (Static)'}
                     </h4>
-                    <LiveTrackingMap bookingId={booking._id} />
+                    <LiveTrackingMap 
+                      bookingId={booking._id} 
+                      initialLocation={
+                        booking.technician?.location?.coordinates?.length === 2 && booking.technician.location.coordinates[0] !== 0 
+                          ? [booking.technician.location.coordinates[1], booking.technician.location.coordinates[0]] // MongoDB is [lng, lat], Leaflet is [lat, lng]
+                          : [19.0760, 72.8777] // Default fallback map view if no explicit coordinates
+                      } 
+                    />
                   </div>
                 )}
               </div>

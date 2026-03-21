@@ -29,8 +29,14 @@ const RecenterMap = ({ position }) => {
   return null;
 };
 
-const LiveTrackingMap = ({ bookingId }) => {
-  const [techLocation, setTechLocation] = useState(null); // [lat, lng]
+const LiveTrackingMap = ({ bookingId, initialLocation }) => {
+  const [techLocation, setTechLocation] = useState(initialLocation || null); // [lat, lng]
+
+  useEffect(() => {
+    if (initialLocation && (!techLocation || (initialLocation[0] !== techLocation[0] && initialLocation[1] !== techLocation[1]))) {
+      setTechLocation(initialLocation);
+    }
+  }, [initialLocation]);
 
   useEffect(() => {
     if (!bookingId) return;
