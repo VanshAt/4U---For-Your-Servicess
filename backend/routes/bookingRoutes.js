@@ -93,6 +93,16 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
+// Get bookings for logged-in customer
+router.get('/my', authMiddleware, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ customer: req.user.id }).populate('technician').sort({ createdAt: -1 });
+    res.status(200).json({ success: true, data: bookings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+});
+
 // Get all bookings (Admin/Dashboard)
 router.get('/', async (req, res) => {
   try {

@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AdminDashboard from './pages/AdminDashboard';
 import TechnicianDashboard from './pages/TechnicianDashboard';
+import MyBookings from './pages/MyBookings';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -42,6 +43,7 @@ const Navbar = () => {
             <>
               <Link to="/" className="nav-link">Home</Link>
               <Link to="/services" className="nav-link">Services</Link>
+              <Link to="/my-bookings" className="nav-link">My Bookings</Link>
             </>
           )}
           {user.role === 'admin' && <Link to="/secret-admin-panel" className="nav-link">Admin</Link>}
@@ -106,6 +108,11 @@ function App() {
               <Route path="/booking" element={
                 <ProtectedRoute>
                   <Booking />
+                </ProtectedRoute>
+              } />
+              <Route path="/my-bookings" element={
+                <ProtectedRoute allowedRoles={['customer']}>
+                  <MyBookings />
                 </ProtectedRoute>
               } />
               <Route path="/secret-admin-panel" element={
